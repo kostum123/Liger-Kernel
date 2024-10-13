@@ -47,13 +47,14 @@ def _gelu_tanh_forward_kernel(
 
 @triton.jit
 def _gelu_tanh_backward_kernel(
-    dc, a, stride, n_cols: tl.constexpr, BLOCK_SIZE: tl.constexpr
+    dc, a, da, stride, n_cols: tl.constexpr, BLOCK_SIZE: tl.constexpr
 ):
     program_id = tl.program_id(0).to(tl.int64)
 
     # locate start index
     dc += program_id * stride
     a += program_id * stride
+    da += program_id * stride
 
     col_offsets = tl.arange(0, BLOCK_SIZE)
     mask = col_offsets < n_cols
@@ -80,7 +81,7 @@ def _gelu_tanh_backward_kernel(
     )
     da_row = dc_row * (term1 + term2)
 
-    tl.store(a + col_offsets, da_row, mask=mask)
+    tl.store(da + col_offsets, da_row, mask=mask)
 
 
 @triton.jit
@@ -108,13 +109,14 @@ def _gelu_exact_forward_kernel(
 
 @triton.jit
 def _gelu_exact_backward_kernel(
-    dc, a, stride, n_cols: tl.constexpr, BLOCK_SIZE: tl.constexpr
+    dc, a, da, stride, n_cols: tl.constexpr, BLOCK_SIZE: tl.constexpr
 ):
     program_id = tl.program_id(0).to(tl.int64)
 
     # locate start index
     dc += program_id * stride
     a += program_id * stride
+    da += program_id * stride
 
     col_offsets = tl.arange(0, BLOCK_SIZE)
     mask = col_offsets < n_cols
@@ -135,7 +137,7 @@ def _gelu_exact_backward_kernel(
     term2 = 0.5 * a_row * (2 / 3.141592653589793) * exp_result
     da_row = dc_row * (term1 + term2)
 
-    tl.store(a + col_offsets, da_row, mask=mask)
+    tl.store(da + col_offsets, da_row, mask=mask)
 
 
 def gelu_forward(a, exact=False):
@@ -173,14 +175,16 @@ def gelu_backward(a, dc, exact=False):
     ori_shape = dc.shape
     n_cols = ori_shape[-1]
     dc = dc.view(-1, n_cols)
+    a = a.view(-1, n_cols)
     n_rows = dc.shape[0]
-
+    da = torch.empty_like(dc)
     BLOCK_SIZE, num_warps = calculate_settings(n_cols)
 
     if exact:
         _gelu_exact_backward_kernel[(n_rows,)](
             dc,
             a,
+            da,
             dc.stride(-2),
             n_cols=n_cols,
             BLOCK_SIZE=BLOCK_SIZE,
@@ -190,13 +194,14 @@ def gelu_backward(a, dc, exact=False):
         _gelu_tanh_backward_kernel[(n_rows,)](
             dc,
             a,
+            da,
             dc.stride(-2),
             n_cols=n_cols,
             BLOCK_SIZE=BLOCK_SIZE,
             num_warps=num_warps,
         )
 
-    return a.view(*ori_shape)
+    return da.view(*ori_shape)
 
 
 class LigerGELUFunction(torch.autograd.Function):
@@ -212,5 +217,5 @@ class LigerGELUFunction(torch.autograd.Function):
     @ensure_contiguous
     def backward(ctx, dc):
         a, = ctx.saved_tensors
-        a = gelu_backward(a, dc, ctx.exact)
-        return a, None
+        da = gelu_backward(a, dc, ctx.exact)
+        return da, None
