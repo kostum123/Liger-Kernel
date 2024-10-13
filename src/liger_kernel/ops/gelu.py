@@ -102,7 +102,7 @@ def _gelu_exact_forward_kernel(
     # 0.5 * a * (1 + erf(a / sqrt(2)))
     sqrt_2 = 1.4142135623730951  # sqrt(2)
     erf_arg = a_row / sqrt_2
-    erf_result = tl.libdevice.erf(erf_arg)
+    erf_result = tl.erf(erf_arg)
     gelu_a = 0.5 * a_row * (1 + erf_result)
     tl.store(c + col_offsets, gelu_a, mask=mask)
 
@@ -127,13 +127,13 @@ def _gelu_exact_backward_kernel(
     # recomputation to save memory
     sqrt_2 = 1.4142135623730951  # sqrt(2)
     erf_arg = a_row / sqrt_2
-    erf_result = tl.libdevice.erf(erf_arg)
+    erf_result = tl.erf(erf_arg)
 
     # Gradient w.r.t. a can be computed with:
     # 0.5 * (1 + erf(a / sqrt(2))) + 0.5 * a * (2 / sqrt(pi)) * exp(-a^2 / 2)
     term1 = 0.5 * (1 + erf_result)
     exp_arg = -0.5 * a_row * a_row
-    exp_result = tl.libdevice.exp(exp_arg)
+    exp_result = tl.exp(exp_arg)
     term2 = 0.5 * a_row * (2 / 3.141592653589793) * exp_result
     da_row = dc_row * (term1 + term2)
 
