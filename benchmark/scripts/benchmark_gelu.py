@@ -1,5 +1,6 @@
 import torch
 import triton
+import operator
 from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.models.llama.modeling_llama import LlamaMLP
 from utils import (
@@ -10,8 +11,16 @@ from utils import (
     parse_benchmark_script_args,
     run_benchmarks,
 )
-
+from liger_kernel.ops.utils import compare_version
 from liger_kernel.transformers.gelu import LigerGELUMLP
+
+if compare_version("triton", operator.ge, "2.1.0"):
+    import triton.language as tl
+    tanh = tl.math.tanh
+    erf = tl.math.erf
+    exp = tl.math.exp
+else:
+    from triton.language.libdevice import tanh, erf, exp
 
 
 def bench_speed_gelu(input: SingleBenchmarkRunInput) -> SingleBenchmarkRunOutput:
