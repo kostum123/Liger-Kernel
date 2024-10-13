@@ -238,7 +238,6 @@ loss.backward()
 | Phi3 & Phi3.5       | `liger_kernel.transformers.apply_liger_kernel_to_phi3`     | RoPE, RMSNorm, SwiGLU, CrossEntropyLoss, FusedLinearCrossEntropy         |
 
 
-
 ### Kernels
 
 | **Kernel**                      | **API**                                                     |
@@ -248,6 +247,7 @@ loss.backward()
 | RoPE                            | `liger_kernel.transformers.liger_rotary_pos_emb`            |
 | SwiGLU                          | `liger_kernel.transformers.LigerSwiGLUMLP`                  |
 | GeGLU                           | `liger_kernel.transformers.LigerGEGLUMLP`                   |
+| GELU                           | `liger_kernel.transformers.LigerGELUMLP`                   |
 | CrossEntropy                    | `liger_kernel.transformers.LigerCrossEntropyLoss`           |
 | FusedLinearCrossEntropy         | `liger_kernel.transformers.LigerFusedLinearCrossEntropyLoss`|
 | KLDivergence                    | `liger_kernel.transformers.LigerKLDIVLoss`                  |
@@ -261,6 +261,9 @@ $$\text{SwiGLU}(x)=\text{Swish}_{\beta}(xW+b)\otimes(xV+c)$$
 , is implemented by fusing the elementwise multiplication (denoted by $\otimes$) into a single kernel with inplace replacement, and achieves parity speed with ~1.5X peak memory reduction.
 - **GeGLU**: [GELU Gated Linear Units](https://arxiv.org/pdf/2002.05202), given by
 $$\text{GeGLU}(x)=\text{GELU}(xW+b)\otimes(xV+c)$$
+, is implemented by fusing the elementwise multiplication into a single kernel with inplace replacement, and achieves parity speed with ~1.5X peak memory reduction. Note that the [tanh approximation form of GELU](https://pytorch.org/docs/stable/generated/torch.nn.GELU.html) is used.
+- **GELU**: [Gaussian Error Linear Unit](https://arxiv.org/pdf/1606.08415), given by
+$$\text{GELU}(x)=0.5 * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715 * x^3)))$$
 , is implemented by fusing the elementwise multiplication into a single kernel with inplace replacement, and achieves parity speed with ~1.5X peak memory reduction. Note that the [tanh approximation form of GELU](https://pytorch.org/docs/stable/generated/torch.nn.GELU.html) is used.
 - **CrossEntropy**: [Cross entropy loss](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) is implemented by computing both the loss and gradient in the forward pass with inplace replacement of input to reduce the peak memory by avoiding simultaneous materialization of both input logits and gradient. It achieves >2X speedup and >4X memory reduction for common vocab sizes (e.g., 32K, 128K, etc.).
 <!-- TODO: verify vocab sizes are accurate  -->
