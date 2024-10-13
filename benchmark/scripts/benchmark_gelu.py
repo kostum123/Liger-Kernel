@@ -23,6 +23,7 @@ def bench_speed_gelu(input: SingleBenchmarkRunInput) -> SingleBenchmarkRunOutput
     dtype = input.extra_benchmark_config["dtype"]
     provider = input.kernel_provider
     mode = input.kernel_operation_mode
+    exact = input.extra_benchmark_config.get("exact", False)
 
     llama_config = LlamaConfig(
         hidden_size=hidden_size,
@@ -37,7 +38,7 @@ def bench_speed_gelu(input: SingleBenchmarkRunInput) -> SingleBenchmarkRunOutput
     x = torch.randn(*x_shape, device=device, dtype=dtype, requires_grad=True)
 
     if provider == "liger":
-        layer = LigerGELUMLP(config=llama_config).to(device).to(dtype)
+        layer = LigerGELUMLP(config=llama_config, exact=exact).to(device).to(dtype)
     elif provider == "huggingface":
         layer = LlamaMLP(config=llama_config).to(device).to(dtype)
     else:
@@ -91,6 +92,7 @@ def bench_memory_gelu(input: SingleBenchmarkRunInput) -> SingleBenchmarkRunOutpu
     dtype = input.extra_benchmark_config["dtype"]
     provider = input.kernel_provider
     mode = input.kernel_operation_mode
+    exact = input.extra_benchmark_config.get("exact", False)
 
     llama_config = LlamaConfig(
         hidden_size=hidden_size,
@@ -104,7 +106,7 @@ def bench_memory_gelu(input: SingleBenchmarkRunInput) -> SingleBenchmarkRunOutpu
     x = torch.randn(*x_shape, device=device, dtype=dtype, requires_grad=True)
 
     if provider == "liger":
-        layer = LigerGELUMLP(config=llama_config).to(device).to(dtype)
+        layer = LigerGELUMLP(config=llama_config, exact=exact).to(device).to(dtype)
     elif provider == "huggingface":
         layer = LlamaMLP(config=llama_config).to(device).to(dtype)
     else:
@@ -158,7 +160,16 @@ if __name__ == "__main__":
                 "intermediate_size": 11008,
                 "hidden_act": "gelu_pytorch_tanh",
                 "dtype": torch.bfloat16,
-            }
+                "exact": False,
+            },
+            {
+                "bsz": 8,
+                "hidden_size": 4096,
+                "intermediate_size": 11008,
+                "hidden_act": "gelu_pytorch_tanh",
+                "dtype": torch.bfloat16,
+                "exact": True,
+            },
         ],
         "overwrite": args.overwrite,
     }

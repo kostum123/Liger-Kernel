@@ -43,7 +43,8 @@ SLEEP_SECONDS = 0.1
         ),
     ],
 )
-def test_correctness(bsz, seq_len, hidden_size, intermediate_size, dtype, atol, rtol):
+@pytest.mark.parametrize("exact", [False, True])
+def test_correctness(bsz, seq_len, hidden_size, intermediate_size, dtype, atol, rtol, exact):
     _input = torch.randn(bsz, seq_len, hidden_size, device="cuda", dtype=dtype)
 
     x1 = _input.clone().requires_grad_(True)
@@ -59,7 +60,7 @@ def test_correctness(bsz, seq_len, hidden_size, intermediate_size, dtype, atol, 
     llama_mlp.up_proj.weight.data = U.T
     llama_mlp.down_proj.weight.data = D.T
 
-    liger_mlp = LigerGELUMLP(config=LLAMA_CONFIG).to("cuda").to(dtype)
+    liger_mlp = LigerGELUMLP(config=LLAMA_CONFIG, exact=exact).to("cuda").to(dtype)
     liger_mlp.gate_proj.weight.data = G.T
     liger_mlp.up_proj.weight.data = U.T
     liger_mlp.down_proj.weight.data = D.T
@@ -122,14 +123,15 @@ def test_correctness(bsz, seq_len, hidden_size, intermediate_size, dtype, atol, 
         (torch.bfloat16, 1e4, 6e-3),
     ],
 )
-def test_correctness_functional(bsz, seq_len, size, dtype, atol, rtol):
+@pytest.mark.parametrize("exact", [False, True])
+def test_correctness_functional(bsz, seq_len, size, dtype, atol, rtol, exact):
     _input = torch.randn(bsz, seq_len, size, device="cuda", dtype=dtype)
 
     x1 = _input.clone().requires_grad_(True)
     x2 = _input.clone().requires_grad_(True)
 
-    y1 = liger_gelu(x1)
-    y2 = LigerGELUFunction.apply(x2)
+    y1 = liger_gelu(x1, exact)
+    y2 = LigerGELUFunction.apply(x2, exact)
 
     assert torch.allclose(y1, y2, atol=atol, rtol=rtol)
 
