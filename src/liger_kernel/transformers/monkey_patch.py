@@ -21,6 +21,7 @@ from liger_kernel.transformers.swiglu import (
     LigerPhi3SwiGLUMLP,
     LigerSwiGLUMLP,
 )
+from liger_kernel.transformers.relu_squared import LigerReLUSquaredMLP
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def apply_liger_kernel_to_llama(
     fused_linear_cross_entropy: bool = True,
     rms_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -69,6 +71,7 @@ def apply_liger_kernel_to_llama(
             If `fused_linear_cross_entropy` is True, the logits will not be materialized but more memory efficient.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -85,6 +88,8 @@ def apply_liger_kernel_to_llama(
         modeling_llama.LlamaRMSNorm = LigerRMSNorm
     if swiglu:
         modeling_llama.LlamaMLP = LigerSwiGLUMLP
+    if relu2:
+        modeling_llama.LlamaMLP = LigerReLUSquaredMLP
     if cross_entropy:
         modeling_llama.CrossEntropyLoss = LigerCrossEntropyLoss
     if fused_linear_cross_entropy:
@@ -112,6 +117,10 @@ def apply_liger_kernel_to_llama(
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerSwiGLUMLP.forward
                 )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                )
             if rms_norm:
                 _patch_rms_norm_module(decoder_layer.input_layernorm)
                 _patch_rms_norm_module(decoder_layer.post_attention_layernorm)
@@ -124,6 +133,7 @@ def apply_liger_kernel_to_mllama(
     layer_norm: bool = True,
     rms_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -139,6 +149,7 @@ def apply_liger_kernel_to_mllama(
             If `fused_linear_cross_entropy` is True, the logits will not be materialized but more memory efficient.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -165,6 +176,8 @@ def apply_liger_kernel_to_mllama(
         modeling_mllama.MllamaTextRMSNorm = LigerRMSNorm
     if swiglu:
         modeling_mllama.MllamaTextMLP = LigerSwiGLUMLP
+    if relu2:
+        modeling_mllama.MllamaTextMLP = LigerReLUSquaredMLP
     if cross_entropy:
         modeling_mllama.CrossEntropyLoss = LigerCrossEntropyLoss
     if fused_linear_cross_entropy:
@@ -197,6 +210,10 @@ def apply_liger_kernel_to_mllama(
                     _bind_method_to_module(
                         decoder_layer.mlp, "forward", LigerSwiGLUMLP.forward
                     )
+                if relu2:
+                    _bind_method_to_module(
+                        decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                    )
                 if rms_norm:
                     _patch_rms_norm_module(decoder_layer.input_layernorm)
                     _patch_rms_norm_module(decoder_layer.post_attention_layernorm)
@@ -222,6 +239,7 @@ def apply_liger_kernel_to_mistral(
     fused_linear_cross_entropy: bool = True,
     rms_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -237,6 +255,7 @@ def apply_liger_kernel_to_mistral(
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -256,6 +275,8 @@ def apply_liger_kernel_to_mistral(
         modeling_mistral.MistralForCausalLM.forward = mistral_lce_forward
     if swiglu:
         modeling_mistral.MistralMLP = LigerSwiGLUMLP
+    if relu2:
+        modeling_mistral.MistralMLP = LigerReLUSquaredMLP
 
     if model is not None:
         # The model instance already exists, so we need to additionally patch the
@@ -276,6 +297,10 @@ def apply_liger_kernel_to_mistral(
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerSwiGLUMLP.forward
                 )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                )
             if rms_norm:
                 _patch_rms_norm_module(decoder_layer.input_layernorm)
                 _patch_rms_norm_module(decoder_layer.post_attention_layernorm)
@@ -287,6 +312,7 @@ def apply_liger_kernel_to_mixtral(
     fused_linear_cross_entropy: bool = True,
     rms_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -301,6 +327,7 @@ def apply_liger_kernel_to_mixtral(
             If `fused_linear_cross_entropy` is True, the logits will not be materialized but more memory efficient.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -321,6 +348,8 @@ def apply_liger_kernel_to_mixtral(
         modeling_mixtral.MixtralForCausalLM.forward = mixtral_lce_forward
     if swiglu:
         modeling_mixtral.MixtralBlockSparseTop2MLP = LigerBlockSparseTop2MLP
+    if relu2:
+        modeling_mixtral.MixtralBlockSparseTop2MLP = LigerReLUSquaredMLP
 
     if model is not None:
         # The model instance already exists, so we need to additionally patch the
@@ -342,6 +371,11 @@ def apply_liger_kernel_to_mixtral(
                     _bind_method_to_module(
                         expert, "forward", LigerBlockSparseTop2MLP.forward
                     )
+            if relu2:
+                for expert in decoder_layer.block_sparse_moe.experts:
+                    _bind_method_to_module(
+                        expert, "forward", LigerReLUSquaredMLP.forward
+                    )
             if rms_norm:
                 _patch_rms_norm_module(decoder_layer.input_layernorm)
                 _patch_rms_norm_module(decoder_layer.post_attention_layernorm)
@@ -353,6 +387,7 @@ def apply_liger_kernel_to_gemma(
     fused_linear_cross_entropy: bool = True,
     rms_norm: bool = True,
     geglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -368,6 +403,7 @@ def apply_liger_kernel_to_gemma(
             If `fused_linear_cross_entropy` is True, the logits will not be materialized but more memory efficient.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         geglu (bool): Whether to apply Liger's GeGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -393,6 +429,8 @@ def apply_liger_kernel_to_gemma(
         modeling_gemma.CrossEntropyLoss = LigerCrossEntropyLoss
     if geglu:
         modeling_gemma.GemmaMLP = LigerGEGLUMLP
+    if relu2:
+        modeling_gemma.GemmaMLP = LigerReLUSquaredMLP
     if fused_linear_cross_entropy:
         modeling_gemma.GemmaForCausalLM.forward = gemma_lce_forward
 
@@ -415,6 +453,10 @@ def apply_liger_kernel_to_gemma(
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerGEGLUMLP.forward
                 )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                )
             if rms_norm:
                 _patch_rms_norm_module_for_gemma(decoder_layer.input_layernorm)
                 _patch_rms_norm_module_for_gemma(decoder_layer.post_attention_layernorm)
@@ -425,6 +467,7 @@ def apply_liger_kernel_to_gemma2(
     cross_entropy: bool = True,
     rms_norm: bool = True,
     geglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -436,6 +479,7 @@ def apply_liger_kernel_to_gemma2(
         cross_entropy (bool): Whether to apply Liger's cross entropy loss. Default is True.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         geglu (bool): Whether to apply Liger's GeGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -457,6 +501,8 @@ def apply_liger_kernel_to_gemma2(
         modeling_gemma2.CrossEntropyLoss = LigerCrossEntropyLoss
     if geglu:
         modeling_gemma2.Gemma2MLP = LigerGEGLUMLP
+    if relu2:
+        modeling_gemma2.Gemma2MLP = LigerReLUSquaredMLP
 
     if model is not None:
         # The model instance already exists, so we need to additionally patch the
@@ -477,6 +523,10 @@ def apply_liger_kernel_to_gemma2(
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerGEGLUMLP.forward
                 )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                )
             if rms_norm:
                 _patch_rms_norm_module_for_gemma2(decoder_layer.input_layernorm)
                 _patch_rms_norm_module_for_gemma2(
@@ -496,6 +546,7 @@ def apply_liger_kernel_to_qwen2(
     fused_linear_cross_entropy: bool = True,
     rms_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -510,6 +561,7 @@ def apply_liger_kernel_to_qwen2(
             If `fused_linear_cross_entropy` is True, the logits will not be materialized but more memory efficient.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -529,6 +581,8 @@ def apply_liger_kernel_to_qwen2(
         modeling_qwen2.Qwen2ForCausalLM.forward = qwen2_lce_forward
     if swiglu:
         modeling_qwen2.Qwen2MLP = LigerSwiGLUMLP
+    if relu2:
+        modeling_qwen2.Qwen2MLP = LigerReLUSquaredMLP
 
     if model is not None:
         # The model instance already exists, so we need to additionally patch the
@@ -549,6 +603,10 @@ def apply_liger_kernel_to_qwen2(
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerSwiGLUMLP.forward
                 )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                )
             if rms_norm:
                 _patch_rms_norm_module(decoder_layer.input_layernorm)
                 _patch_rms_norm_module(decoder_layer.post_attention_layernorm)
@@ -560,6 +618,7 @@ def apply_liger_kernel_to_qwen2_vl(
     rms_norm: bool = True,
     layer_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -575,6 +634,7 @@ def apply_liger_kernel_to_qwen2_vl(
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         layer_norm (bool): Whether to apply Liger's LayerNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -601,6 +661,8 @@ def apply_liger_kernel_to_qwen2_vl(
         modeling_qwen2_vl.Qwen2VLForConditionalGeneration.forward = qwen2_vl_lce_forward
     if swiglu:
         modeling_qwen2_vl.Qwen2MLP = LigerSwiGLUMLP
+    if relu2:
+        modeling_qwen2_vl.Qwen2MLP = LigerReLUSquaredMLP
 
     if model is not None:
         # The model instance already exists, so we need to additionally patch the
@@ -627,6 +689,10 @@ def apply_liger_kernel_to_qwen2_vl(
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerSwiGLUMLP.forward
                 )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
+                )
             if rms_norm:
                 _patch_rms_norm_module(decoder_layer.input_layernorm)
                 _patch_rms_norm_module(decoder_layer.post_attention_layernorm)
@@ -638,6 +704,7 @@ def apply_liger_kernel_to_phi3(
     fused_linear_cross_entropy: bool = True,
     rms_norm: bool = True,
     swiglu: bool = True,
+    relu2: bool = False,
     model: PreTrainedModel = None,
 ) -> None:
     """
@@ -652,6 +719,7 @@ def apply_liger_kernel_to_phi3(
             If `fused_linear_cross_entropy` is True, the logits will not be materialized but more memory efficient.
         rms_norm (bool): Whether to apply Liger's RMSNorm. Default is True.
         swiglu (bool): Whether to apply Liger's SwiGLU Phi3MLP. Default is True.
+        relu2 (bool): Whether to apply Liger's ReLU Squared MLP. Default is False.
         model (PreTrainedModel): The model instance to apply Liger kernels to, if the model has already been
         loaded. Default is None.
     """
@@ -667,6 +735,8 @@ def apply_liger_kernel_to_phi3(
         modeling_phi3.Phi3RMSNorm = LigerRMSNorm  # Same as Llama
     if swiglu:
         modeling_phi3.Phi3MLP = LigerPhi3SwiGLUMLP
+    if relu2:
+        modeling_phi3.Phi3MLP = LigerReLUSquaredMLP
     if cross_entropy:
         modeling_phi3.CrossEntropyLoss = LigerCrossEntropyLoss
     if fused_linear_cross_entropy:
@@ -690,6 +760,10 @@ def apply_liger_kernel_to_phi3(
             if swiglu:
                 _bind_method_to_module(
                     decoder_layer.mlp, "forward", LigerPhi3SwiGLUMLP.forward
+                )
+            if relu2:
+                _bind_method_to_module(
+                    decoder_layer.mlp, "forward", LigerReLUSquaredMLP.forward
                 )
             if rms_norm:
                 _patch_rms_norm_module(decoder_layer.input_layernorm)
